@@ -6,6 +6,7 @@ from CTFd.utils import get_app_config, get_config
 from CTFd.utils.email.providers import EmailProvider
 
 
+# Changed to using smtp2go
 class MailgunEmailProvider(EmailProvider):
     @staticmethod
     def sendmail(addr, text, subject):
@@ -19,17 +20,21 @@ class MailgunEmailProvider(EmailProvider):
         mailgun_api_key = get_config("mailgun_api_key") or get_app_config(
             "MAILGUN_API_KEY"
         )
+        # Remove trailing / if exists
+        mailgun_base_url = mailgun_base_url[:-1] if mailgun_base_url[-1] == "/" else mailgun_base_url
+        mailgun_base_url = mailgun_base_url.strip()
         try:
             r = requests.post(
-                mailgun_base_url + "/messages",
-                auth=("api", mailgun_api_key),
-                data={
-                    "from": mailfrom_addr,
+                mailgun_base_url+"/email/send",
+                headers={"Content-Type": "application/json"},
+                json={
+                    "api_key": mailgun_api_key,
+                    "sender": mailfrom_addr,
                     "to": [addr],
                     "subject": subject,
-                    "text": text,
+                    "text_body": text,
                 },
-                timeout=1.0,
+                timeout=5.0,
             )
         except requests.RequestException as e:
             return (
@@ -42,4 +47,4 @@ class MailgunEmailProvider(EmailProvider):
         if r.status_code == 200:
             return True, "Email sent"
         else:
-            return False, "Mailgun settings are incorrect"
+            return False, "smtp2go settings are incorrect"
